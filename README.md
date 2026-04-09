@@ -14,16 +14,19 @@ echo ".ralph/" >> .gitignore
 
 # 2. Clone this repo into .ralph
 git clone <ralph-repo-url> .ralph
+
+# 3. Create the Docker sandbox and trigger OAuth
+.ralph/setup.sh
 ```
 
 ## Workflow
 
 ### Interactive planning (you at the keyboard)
 
-Launch Claude in the customer project with ralph skills loaded:
+Launch an interactive Claude session inside the sandbox with ralph skills loaded:
 
 ```bash
-claude --add-dir .ralph/.claude
+.ralph/interactive.sh
 ```
 
 This gives you access to all ralph skills (`/ralph-grill-me`, `/ralph-write-a-prd`, `/ralph-prd-to-issues`, etc.).
@@ -70,7 +73,9 @@ From the customer project root:
 ```
 customer-project/
   .ralph/                    # THIS REPO (gitignored from customer repo)
-    ralph.sh                 # loop launcher
+    setup.sh                 # one-time sandbox creation + OAuth
+    interactive.sh           # interactive Claude session in sandbox
+    ralph.sh                 # AFK loop launcher
     PROMPT.md                # loop prompt (customize per project)
     .claude/
       skills/                # skills loaded via --add-dir
