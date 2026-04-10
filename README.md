@@ -8,7 +8,7 @@ Inspired by [Ralph Wiggum AFK coding](https://www.aihero.dev/tips-for-ai-coding-
 
 Because the Docker sandbox syncs files bidirectionally with its workspace, running `pnpm install` inside the sandbox pollutes your main checkout's `node_modules` with Linux binaries. To avoid this, run Ralph from a **dedicated git worktree** on its own branch, so the pollution is isolated from your main working copy and you can continue to QA in parallel.
 
-Git refuses to check out the same branch in two worktrees at once, so Ralph gets a sibling branch. Ralph commits to `<feature>-ralph`; you periodically merge (or rebase) those commits into `<feature>` in your main worktree when you want to adopt them.
+Git refuses to check out the same branch in two worktrees at once, so Ralph gets a sibling branch. Ralph commits to `<feature>-ralph`; you periodically rebase those commits into `<feature>` in your main worktree when you want to adopt them.
 
 In your customer/target project:
 
@@ -39,7 +39,7 @@ While Ralph runs in the worktree, your main checkout stays on `<feature>` for QA
 
 ```bash
 # In the main worktree
-git merge <feature>-ralph      # or: git rebase <feature>-ralph
+git rebase <feature>-ralph
 ```
 
 ## Workflow
