@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+trap 'echo "Interrupted, exiting."; exit 130' INT
+
 RALPH_DIR="$(cd "$(dirname "$0")" && pwd)"
 SANDBOX_NAME="ralph"
 ITERATIONS=${1:-50}
