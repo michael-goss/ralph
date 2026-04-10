@@ -6,17 +6,40 @@ Inspired by [Ralph Wiggum AFK coding](https://www.aihero.dev/tips-for-ai-coding-
 
 ## Setup
 
+Because the Docker sandbox syncs files bidirectionally with its workspace, running `pnpm install` inside the sandbox pollutes your main checkout's `node_modules` with Linux binaries. To avoid this, run Ralph from a **dedicated git worktree** on its own branch, so the pollution is isolated from your main working copy and you can continue to QA in parallel.
+
+Git refuses to check out the same branch in two worktrees at once, so Ralph gets a sibling branch. Ralph commits to `<feature>-ralph`; you periodically merge (or rebase) those commits into `<feature>` in your main worktree when you want to adopt them.
+
 In your customer/target project:
 
 ```bash
-# 1. Add .ralph to .gitignore
+# 1. Add .ralph to .gitignore (in the main checkout)
 echo ".ralph/" >> .gitignore
 
-# 2. Clone this repo into .ralph
+# 2. Create a sibling branch for Ralph, forked from your feature branch
+git branch <feature>-ralph <feature>
+
+# 3. Create a dedicated worktree for Ralph on that sibling branch
+#    (path is your choice)
+git worktree add <worktree-path> <feature>-ralph
+cd <worktree-path>
+
+# 4. Clone this repo into .ralph (inside the worktree)
 git clone <ralph-repo-url> .ralph
 
-# 3. Create the Docker sandbox and trigger OAuth
+# 5. Create the Docker sandbox, trigger OAuth, install deps
 .ralph/setup.sh
+```
+
+`setup.sh` creates a named Docker sandbox (`ralph`), starts Claude interactively so you can complete the OAuth flow against your Claude subscription, then installs `pnpm` and project dependencies inside the sandbox. It only needs to run once per worktree.
+
+### Adopting Ralph's commits in your main worktree
+
+While Ralph runs in the worktree, your main checkout stays on `<feature>` for QA. To pull in Ralph's work:
+
+```bash
+# In the main worktree
+git merge <feature>-ralph      # or: git rebase <feature>-ralph
 ```
 
 ## Workflow
@@ -130,11 +153,11 @@ You can add new issues to `.ralph/.issues/` while the loop is running.
 ## Prerequisites
 
 - Docker Desktop with [Docker sandbox support](https://docs.docker.com/ai/sandboxes/agents/claude-code/)
-- `ANTHROPIC_API_KEY` in your environment
+- A Claude subscription (Pro or Max) — OAuth is handled interactively during `setup.sh`, no API key required
 
 ## Known limitations
 
 - **PROMPT.md is generic**: You must customize it per project with your test/lint/typecheck commands, conventions, and codebase context.
-- **Docker sandbox + `--add-dir`**: Verify that `docker sandbox run claude` passes `--add-dir` through to Claude. If not, you may need to mount `.ralph/.claude` into the container's expected path instead.
+- **Sandbox pollutes `node_modules`**: The Docker sandbox syncs files bidirectionally, so `pnpm install` inside the sandbox overwrites the host's `node_modules` with Linux binaries. This is why Ralph should run from a dedicated git worktree (see Setup).
 - **No retry policy yet**: If an issue fails, it stays `failed`. No automatic retry or escalation.
 - **No logging yet**: No per-issue activity log beyond git commits and status changes.
