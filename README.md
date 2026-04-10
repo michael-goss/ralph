@@ -89,6 +89,14 @@ git push
 
 PRDs, plans, and issues in `.ralph/` are ephemeral working state — no need to commit them. They only live as long as the feature is being worked on.
 
+Once a feature is finished, wipe the working state before starting the next one:
+
+```bash
+.ralph/cleanup.sh
+```
+
+This removes `.ralph/.prds/` and `.ralph/.issues/`.
+
 ## Directory structure
 
 From the customer project root:
@@ -97,6 +105,7 @@ From the customer project root:
 customer-project/
   .ralph/                    # THIS REPO (gitignored from customer repo)
     setup.sh                 # one-time sandbox creation + OAuth
+    cleanup.sh               # remove PRDs and issues after a feature
     interactive.sh           # interactive Claude session in sandbox
     ralph.sh                 # AFK loop launcher
     PROMPT.md                # loop prompt (customize per project)
