@@ -6,36 +6,41 @@ Inspired by [Ralph Wiggum AFK coding](https://www.aihero.dev/tips-for-ai-coding-
 
 ## Setup
 
-Because the Docker sandbox syncs files bidirectionally with its workspace, running `pnpm install` inside the sandbox pollutes your main checkout's `node_modules` with Linux binaries. To avoid this, run Ralph from a **dedicated git worktree** on its own branch, so the pollution is isolated from your main working copy and you can continue to QA in parallel.
+Run Ralph from a **dedicated second clone** of your project on its own branch. Two reasons:
 
-Git refuses to check out the same branch in two worktrees at once, so Ralph gets a sibling branch. Ralph commits to `<feature>-ralph`; you periodically rebase those commits into `<feature>` in your main worktree when you want to adopt them.
+1. The Docker sandbox syncs files bidirectionally with its workspace, so `pnpm install` inside the sandbox pollutes the checkout's `node_modules` with Linux binaries. A second clone isolates that pollution from your main checkout and lets you keep QAing in parallel.
+2. The sandbox only mounts its working directory via virtiofs. A **git worktree** won't work because its `.git` is just a pointer file (`gitdir: ...`) referencing a gitdir outside the mount — commits made inside the sandbox land in a stub database and never reach your host. A full clone keeps the entire `.git` database inside the mount, so commits persist on disk.
+
+Ralph commits to a sibling branch `<feature>-ralph`; you pull those commits into `<feature>` on your main checkout (via `origin` or a local path remote) when you want to adopt them.
 
 In your customer/target project:
 
 ```bash
-# 1. Add .ralph to .gitignore (in the main checkout)
+# 1. Commit .ralph/ to .gitignore in your main checkout
 echo ".ralph/" >> .gitignore
+git add .gitignore && git commit -m "chore: gitignore .ralph/"
+git push
 
-# 2. Create a sibling branch for Ralph, forked from your feature branch
-git branch <feature>-ralph <feature>
+# 2. Clone the repo a second time (path is your choice, sibling to your main checkout)
+git clone <customer-repo-url> <ralph-clone-path>
+cd <ralph-clone-path>
 
-# 3. Create a dedicated worktree for Ralph on that sibling branch
-#    (path is your choice)
-git worktree add <worktree-path> <feature>-ralph
-cd <worktree-path>
+# 3. Check out a sibling branch for Ralph, forked from your feature branch
+git fetch origin
+git checkout -b <feature>-ralph origin/<feature>
 
-# 4. Clone this repo into .ralph (inside the worktree)
+# 4. Clone this repo into .ralph (inside the Ralph clone)
 git clone <ralph-repo-url> .ralph
 
 # 5. Create the Docker sandbox, trigger OAuth, install deps
 .ralph/setup.sh
 ```
 
-`setup.sh` creates a named Docker sandbox (`ralph`), installs Ralph's permission settings into the sandbox, starts Claude interactively so you can complete the OAuth flow against your Claude subscription, then installs `pnpm` and project dependencies inside the sandbox. It only needs to run once per worktree.
+`setup.sh` creates a named Docker sandbox (`ralph`), installs Ralph's permission settings into the sandbox, starts Claude interactively so you can complete the OAuth flow against your Claude subscription, then installs `pnpm` and project dependencies inside the sandbox. It only needs to run once per clone.
 
 ### Permissions
 
-Ralph ships a permission deny-list in `.ralph/.claude/settings.json` that blocks destructive git operations (`git init`, `git branch`, `git checkout`, `git reset`, `git worktree`, writes to `.git/`, …). The loop runs on a prepared branch in a dedicated worktree, so it only ever needs `git add` and `git commit` — anything else indicates the agent got confused and started reshaping the repo.
+Ralph ships a permission deny-list in `.ralph/.claude/settings.json` that blocks destructive git operations (`git init`, `git branch`, `git checkout`, `git reset`, `git worktree`, writes to `.git/`, …). The loop runs on a prepared branch in a dedicated clone, so it only ever needs `git add` and `git commit` — anything else indicates the agent got confused and started reshaping the repo.
 
 `setup.sh` copies this file into the sandbox at `/home/agent/.claude/settings.json` (user-level settings, loaded regardless of CWD). The file inside the sandbox is a **snapshot**, not a live reference — if you edit `.ralph/.claude/settings.json` later, re-sync with:
 
@@ -45,13 +50,30 @@ docker sandbox exec -i ralph bash -c 'cat > /home/agent/.claude/settings.json' <
 
 Deny rules are enforced even in `bypassPermissions` mode, so the loop cannot override them.
 
-### Adopting Ralph's commits in your main worktree
+### Adopting Ralph's commits in your main checkout
 
-While Ralph runs in the worktree, your main checkout stays on `<feature>` for QA. To pull in Ralph's work:
+While Ralph runs in its own clone, your main checkout stays on `<feature>` for QA. Ralph's commits live in the Ralph clone's local `.git` on disk, so you have two ways to pull them into your main checkout:
+
+**Via origin (recommended).** After a Ralph run, push from the Ralph clone, then fetch on your main checkout:
 
 ```bash
-# In the main worktree
-git rebase <feature>-ralph
+# In the Ralph clone
+git push origin <feature>-ralph
+
+# In the main checkout
+git fetch origin
+git rebase origin/<feature>-ralph
+```
+
+**Via a local path remote.** If you'd rather not push WIP commits to origin:
+
+```bash
+# In the main checkout, one-time setup
+git remote add ralph <ralph-clone-path>
+
+# After a Ralph run
+git fetch ralph
+git rebase ralph/<feature>-ralph
 ```
 
 ## Workflow
@@ -180,6 +202,7 @@ You can add new issues to `.ralph/.issues/` while the loop is running.
 ## Known limitations
 
 - **PROMPT.md is generic**: You must customize it per project with your test/lint/typecheck commands, conventions, and codebase context.
-- **Sandbox pollutes `node_modules`**: The Docker sandbox syncs files bidirectionally, so `pnpm install` inside the sandbox overwrites the host's `node_modules` with Linux binaries. This is why Ralph should run from a dedicated git worktree (see Setup).
+- **Sandbox pollutes `node_modules`**: The Docker sandbox syncs files bidirectionally, so `pnpm install` inside the sandbox overwrites the host's `node_modules` with Linux binaries. This is why Ralph should run from a dedicated second clone (see Setup).
+- **Worktrees don't work**: The sandbox only mounts its working directory via virtiofs. A git worktree's `.git` is a pointer file referencing a gitdir outside the mount, so commits made inside the sandbox go into a sandbox-local stub `.git` and never reach the host. Use a full clone instead.
 - **No retry policy yet**: If an issue fails, it stays `failed`. No automatic retry or escalation.
 - **No logging yet**: No per-issue activity log beyond git commits and status changes.
