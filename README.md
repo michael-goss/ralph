@@ -6,12 +6,12 @@ Inspired by [Ralph Wiggum AFK coding](https://www.aihero.dev/tips-for-ai-coding-
 
 ## Setup
 
-Run Ralph from a **dedicated second clone** of your project on its own branch. Two reasons:
+Run Ralph from a **dedicated second clone** of your project. Two reasons:
 
 1. The Docker sandbox syncs files bidirectionally with its workspace, so `pnpm install` inside the sandbox pollutes the checkout's `node_modules` with Linux binaries. A second clone isolates that pollution from your main checkout and lets you keep QAing in parallel.
 2. The sandbox only mounts its working directory via virtiofs. A **git worktree** won't work because its `.git` is just a pointer file (`gitdir: ...`) referencing a gitdir outside the mount — commits made inside the sandbox land in a stub database and never reach your host. A full clone keeps the entire `.git` database inside the mount, so commits persist on disk.
 
-Ralph commits to a sibling branch `<feature>-ralph`; you pull those commits into `<feature>` on your main checkout (via `origin` or a local path remote) when you want to adopt them.
+Ralph works directly on the same feature branch (e.g. `MM-777`) — no separate `-ralph` branch needed. Your main checkout can fetch the latest commits for QA.
 
 In your customer/target project:
 
@@ -25,9 +25,9 @@ git push
 git clone <customer-repo-url> <ralph-clone-path>
 cd <ralph-clone-path>
 
-# 3. Check out a sibling branch for Ralph, forked from your feature branch
+# 3. Check out the feature branch
 git fetch origin
-git checkout -b <feature>-ralph origin/<feature>
+git checkout <feature>
 
 # 4. Clone this repo into .ralph (inside the Ralph clone)
 git clone <ralph-repo-url> .ralph
@@ -40,7 +40,7 @@ git clone <ralph-repo-url> .ralph
 
 ### Permissions
 
-Ralph ships a permission deny-list in `.ralph/.claude/settings.json` that blocks destructive git operations (`git init`, `git branch`, `git checkout`, `git reset`, `git worktree`, writes to `.git/`, …). The loop runs on a prepared branch in a dedicated clone, so it only ever needs `git add` and `git commit` — anything else indicates the agent got confused and started reshaping the repo.
+Ralph ships a permission deny-list in `.ralph/.claude/settings.json` that blocks destructive git operations (`git init`, `git branch`, `git checkout`, `git reset`, `git worktree`, writes to `.git/`, …). The loop runs in a dedicated clone, so it only ever needs `git add` and `git commit` — anything else indicates the agent got confused and started reshaping the repo.
 
 `setup.sh` copies this file into the sandbox at `/home/agent/.claude/settings.json` (user-level settings, loaded regardless of CWD). The file inside the sandbox is a **snapshot**, not a live reference — if you edit `.ralph/.claude/settings.json` later, re-sync with:
 
@@ -50,30 +50,17 @@ docker sandbox exec -i ralph bash -c 'cat > /home/agent/.claude/settings.json' <
 
 Deny rules are enforced even in `bypassPermissions` mode, so the loop cannot override them.
 
-### Adopting Ralph's commits in your main checkout
+### Pulling Ralph's commits into your main checkout
 
-While Ralph runs in its own clone, your main checkout stays on `<feature>` for QA. Ralph's commits live in the Ralph clone's local `.git` on disk, so you have two ways to pull them into your main checkout:
-
-**Via origin (recommended).** After a Ralph run, push from the Ralph clone, then fetch on your main checkout:
+Both clones work on the same branch (e.g. `MM-777`). After a Ralph run, push from the Ralph clone and fetch on your main checkout:
 
 ```bash
 # In the Ralph clone
-git push origin <feature>-ralph
+git push origin <feature>
 
-# In the main checkout
+# In the main checkout — just fast-forward, no rebase needed
 git fetch origin
-git rebase origin/<feature>-ralph
-```
-
-**Via a local path remote.** If you'd rather not push WIP commits to origin:
-
-```bash
-# In the main checkout, one-time setup
-git remote add ralph <ralph-clone-path>
-
-# After a Ralph run
-git fetch ralph
-git rebase ralph/<feature>-ralph
+git pull
 ```
 
 ## Workflow
