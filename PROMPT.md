@@ -24,10 +24,12 @@
 
 - Work on ONE issue per iteration
 - Make a git commit per completed issue (without co-authored-by)
+- Git state is prepared. Only `git add` / `git commit` are permitted for writes. Do not attempt branch, remote, reset, rebase, or `.git/` changes — the harness will block them.
 - If no `todo` issues remain, output `<promise>COMPLETE</promise>`
 - use /ralph-tdd skill
 
 ## Mindset
+
 This codebase will outlive you. Every shortcut you take becomes
 someone else's burden. Every hack compounds into technical debt
 that slows the whole team down.

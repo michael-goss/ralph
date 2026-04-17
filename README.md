@@ -31,7 +31,19 @@ git clone <ralph-repo-url> .ralph
 .ralph/setup.sh
 ```
 
-`setup.sh` creates a named Docker sandbox (`ralph`), starts Claude interactively so you can complete the OAuth flow against your Claude subscription, then installs `pnpm` and project dependencies inside the sandbox. It only needs to run once per worktree.
+`setup.sh` creates a named Docker sandbox (`ralph`), installs Ralph's permission settings into the sandbox, starts Claude interactively so you can complete the OAuth flow against your Claude subscription, then installs `pnpm` and project dependencies inside the sandbox. It only needs to run once per worktree.
+
+### Permissions
+
+Ralph ships a permission deny-list in `.ralph/.claude/settings.json` that blocks destructive git operations (`git init`, `git branch`, `git checkout`, `git reset`, `git worktree`, writes to `.git/`, …). The loop runs on a prepared branch in a dedicated worktree, so it only ever needs `git add` and `git commit` — anything else indicates the agent got confused and started reshaping the repo.
+
+`setup.sh` copies this file into the sandbox at `/home/agent/.claude/settings.json` (user-level settings, loaded regardless of CWD). The file inside the sandbox is a **snapshot**, not a live reference — if you edit `.ralph/.claude/settings.json` later, re-sync with:
+
+```bash
+docker sandbox exec -i ralph bash -c 'cat > /home/agent/.claude/settings.json' < .ralph/.claude/settings.json
+```
+
+Deny rules are enforced even in `bypassPermissions` mode, so the loop cannot override them.
 
 ### Adopting Ralph's commits in your main worktree
 
@@ -110,6 +122,7 @@ customer-project/
     ralph.sh                 # AFK loop launcher
     PROMPT.md                # loop prompt (customize per project)
     .claude/
+      settings.json          # permission deny-list, copied into sandbox by setup.sh
       skills/                # skills loaded via --add-dir
         ralph-grill-me/
         ralph-write-a-prd/
