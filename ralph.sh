@@ -10,7 +10,7 @@ ITERATIONS=${1:-50}
 for ((i=1; i<=$ITERATIONS; i++)); do
   echo "=== Ralph iteration $i/$ITERATIONS ==="
 
-  result=$(docker sandbox run "$SANDBOX_NAME" -- --add-dir "$RALPH_DIR" -p "$(cat "$RALPH_DIR/PROMPT.md")")
+  result=$(docker sandbox run "$SANDBOX_NAME" -- --model claude-opus-4-6 --add-dir "$RALPH_DIR" -p "$(cat "$RALPH_DIR/PROMPT.md")")
 
   echo "$result"
 
