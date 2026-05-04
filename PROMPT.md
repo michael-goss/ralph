@@ -28,6 +28,15 @@
 - If no `todo` issues remain, output `<promise>COMPLETE</promise>`
 - use /ralph-tdd skill
 
+## AFK Mode
+
+This loop runs unattended. No human will answer questions.
+
+- **Never ask for confirmation or approval.** Do not ask "Shall I proceed?", "Does this look right?", or similar. When the /ralph-tdd skill presents a plan, immediately proceed with implementation.
+- **The issue file + PRD are your spec.** All design decisions, acceptance criteria, and scope are already defined there. If the skill asks you to make choices, derive the answer from the issue and PRD.
+- **If something is genuinely ambiguous** (not covered by the issue or PRD), make the simplest choice that satisfies the acceptance criteria, document your decision in the log entry, and move on.
+- **Every iteration must produce either a commit or a `failed` status.** An iteration that only outputs a plan or asks a question is a wasted iteration.
+
 ## Mindset
 
 This codebase will outlive you. Every shortcut you take becomes
