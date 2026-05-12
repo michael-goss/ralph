@@ -34,9 +34,14 @@ git clone <ralph-repo-url> .ralph
 
 # 5. Create the Docker sandbox, trigger OAuth, install deps
 .ralph/setup.sh
+
+# Optional: pin specific versions
+NODE_VERSION=20 PNPM_VERSION=9.0.0 .ralph/setup.sh
 ```
 
 `setup.sh` creates a named Docker sandbox (`ralph`), installs Ralph's permission settings into the sandbox, starts Claude interactively so you can complete the OAuth flow against your Claude subscription, then installs `pnpm` and project dependencies inside the sandbox. It only needs to run once per clone.
+
+By default it uses the official `claude` sandbox image and pnpm `10.28.1`. Set `NODE_VERSION` to install a different Node.js version inside the sandbox via [`n`](https://github.com/tj/n). Set `PNPM_VERSION` to install a different pnpm version.
 
 ### Permissions
 
